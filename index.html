@@ -49,6 +49,7 @@ th{color:var(--mute);font-weight:600;font-size:13px}
 <header>
   <h1>Lab Duty Register</h1>
   <p>Record who worked which lab, with which lecturer, then pull a clean list for your bill.</p>
+  <p id="syncStat" style="margin-top:4px"></p>
 </header>
 <nav id="nav">
   <button data-t="log" class="on">Log duty</button>
@@ -56,6 +57,7 @@ th{color:var(--mute);font-weight:600;font-size:13px}
   <button data-t="labs">Labs</button>
   <button data-t="staff">Lab staff</button>
   <button data-t="lect">Lecturers</button>
+  <button data-t="sync">Sync</button>
   <button data-t="data">Backup</button>
 </nav>
 <main>
@@ -122,6 +124,22 @@ th{color:var(--mute);font-weight:600;font-size:13px}
   </div>
 </section>
 
+<section id="sync">
+  <div class="card">
+    <h2>Share data with all lab staff (GitHub)</h2>
+    <p style="color:var(--mute);margin-top:0">Data is stored as one file, data.json, in a GitHub repository. Everyone who connects to the same repository sees the same records. Your token stays in this browser only.</p>
+    <div class="row">
+      <div><label for="gOwner">Repository owner</label><input id="gOwner" placeholder="GitHub username" autocomplete="off"></div>
+      <div><label for="gRepo">Repository name</label><input id="gRepo" placeholder="lab-data" autocomplete="off"></div>
+      <div><label for="gPath">File name</label><input id="gPath" placeholder="data.json" autocomplete="off"></div>
+      <div><label for="gBranch">Branch (optional)</label><input id="gBranch" placeholder="default branch" autocomplete="off"></div>
+    </div>
+    <div style="margin-bottom:12px"><label for="gToken">Personal access token</label><input id="gToken" type="password" placeholder="github_pat_..." autocomplete="off"></div>
+    <p class="msg" id="syncMsg"></p>
+    <div class="tools"><button class="btn" id="gSave">Save and connect</button><button class="btn ghost" id="gNow">Sync now</button><button class="btn ghost" id="gOff">Disconnect</button></div>
+  </div>
+</section>
+
 <section id="data">
   <div class="card">
     <h2>Backup and restore</h2>
@@ -140,12 +158,111 @@ th{color:var(--mute);font-weight:600;font-size:13px}
 const KEY="labDutyRegister.v1";
 let db={staff:[],lect:[],labs:[],logs:[]};
 try{const s=localStorage.getItem(KEY);if(s)db=JSON.parse(s)}catch(e){}
+db.del=db.del||{};
+["staff","lect","labs","logs"].forEach(c=>db[c]=db[c]||[]);
 if(!db.staff.length&&!db.lect.length&&!db.labs.length&&!db.logs.length){
-  db.staff=["Staff 1","Staff 2","Staff 3","Staff 4"].map(n=>({id:uid(),name:n}));
+  db.staff=["Staff 1","Staff 2","Staff 3","Staff 4"].map((n,i)=>({id:"seed"+(i+1),name:n}));
 }
 let editLog=null,editLab=null;
 function uid(){return Math.random().toString(36).slice(2,9)}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}}
+
+/* ---------- GitHub sync ---------- */
+const COLS=["staff","lect","labs","logs"];
+const CFG_KEY=KEY+".sync";
+let cfg={owner:"",repo:"",branch:"",path:"data.json",token:""};
+try{Object.assign(cfg,JSON.parse(localStorage.getItem(CFG_KEY)||"{}"))}catch(e){}
+function snapshot(){const m={};COLS.forEach(c=>db[c].forEach(r=>{const{u,...x}=r;m[r.id]=JSON.stringify(x)}));return m}
+let last=null;try{last=JSON.parse(localStorage.getItem(KEY+".last")||"null")}catch(e){}
+if(!last)last=snapshot();
+let sha=null,busy=false,timer=null,again=false;
+const connected=()=>cfg.token&&cfg.owner&&cfg.repo;
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(db));localStorage.setItem(KEY+".last",JSON.stringify(last))}catch(e){}}
+function stamp(){
+  const now=Date.now(),ids=new Set();
+  COLS.forEach(c=>db[c].forEach(r=>{ids.add(r.id);const{u,...x}=r;if(last[r.id]!==JSON.stringify(x))r.u=now}));
+  Object.keys(last).forEach(id=>{if(!ids.has(id))db.del[id]=now});
+  last=snapshot();
+}
+function save(){stamp();persist();clearTimeout(timer);timer=setTimeout(sync,800)}
+function merge(r){
+  const del={...db.del};Object.entries(r.del||{}).forEach(([k,v])=>{del[k]=Math.max(del[k]||0,v)});
+  const out={del};
+  COLS.forEach(c=>{const m=new Map();
+    [...(r[c]||[]),...db[c]].forEach(x=>{const o=m.get(x.id);if(!o||(x.u||0)>=(o.u||0))m.set(x.id,x)});
+    out[c]=[...m.values()].filter(x=>!(del[x.id]>(x.u||0)));
+  });
+  return out;
+}
+const apiBase=()=>`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}`;
+const fileUrl=()=>apiBase()+"/contents/"+cfg.path.split("/").map(encodeURIComponent).join("/");
+const hdr=()=>({Authorization:"Bearer "+cfg.token,Accept:"application/vnd.github+json"});
+function b64enc(s){let t="";new TextEncoder().encode(s).forEach(x=>t+=String.fromCharCode(x));return btoa(t)}
+function b64dec(s){return new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g,"")),c=>c.charCodeAt(0)))}
+async function errText(res){
+  let m="";try{m=(await res.json()).message||""}catch(e){}
+  if(res.status===401)return "GitHub rejected the token. Check it and try again.";
+  if(res.status===403)return "Access denied. The token needs Contents: read and write on this repository. "+m;
+  if(res.status===404)return "Repository not found. Check the owner, repository name and that the token has access to it.";
+  return "GitHub error "+res.status+". "+m;
+}
+async function pull(){
+  const q=(cfg.branch?"ref="+encodeURIComponent(cfg.branch)+"&":"")+"t="+Date.now();
+  const res=await fetch(fileUrl()+"?"+q,{headers:hdr(),cache:"no-store"});
+  if(res.status===404){
+    const rr=await fetch(apiBase(),{headers:hdr(),cache:"no-store"});
+    if(!rr.ok)throw new Error(await errText(rr));
+    sha=null;return null;
+  }
+  if(!res.ok)throw new Error(await errText(res));
+  const j=await res.json();sha=j.sha;return JSON.parse(b64dec(j.content));
+}
+async function push(){
+  const body={message:"Update lab duty data",content:b64enc(JSON.stringify(db))};
+  if(sha)body.sha=sha;if(cfg.branch)body.branch=cfg.branch;
+  const res=await fetch(fileUrl(),{method:"PUT",headers:{...hdr(),"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(res.status===409||res.status===422)return false;
+  if(!res.ok)throw new Error(await errText(res));
+  sha=(await res.json()).content.sha;return true;
+}
+function setStatus(msg,bad){
+  const a=$("syncStat"),b=$("syncMsg");
+  a.textContent=msg;a.style.color=bad?"var(--warn)":"var(--mute)";
+  if(b){b.textContent=bad?msg:"";}
+}
+async function sync(){
+  if(!connected()){setStatus("Saved on this device only. Open the Sync tab to share with other staff.");return}
+  if(busy){again=true;return}
+  busy=true;setStatus("Syncing…");
+  try{
+    const before=JSON.stringify(db);let ok=false;
+    for(let i=0;i<4&&!ok;i++){
+      const r=await pull();
+      if(r)db=merge(r);
+      last=snapshot();
+      ok=await push();
+    }
+    if(!ok)throw new Error("Could not save because others are saving at the same time. Try again.");
+    persist();
+    if(JSON.stringify(db)!==before&&!editLog&&!editLab)render();
+    const d=new Date();setStatus("Synced with GitHub at "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"));
+  }catch(e){
+    setStatus((navigator.onLine?"":"You are offline. ")+"Sync failed: "+e.message+" Your changes are kept on this device.",true);
+  }finally{busy=false;if(again){again=false;sync()}}
+}
+function fillSync(){["Owner","Repo","Path","Branch","Token"].forEach(k=>$("g"+k).value=cfg[k.toLowerCase()]||"")}
+function startSync(){
+  fillSync();
+  $("gSave").onclick=()=>{
+    cfg={owner:$("gOwner").value.trim(),repo:$("gRepo").value.trim(),path:$("gPath").value.trim()||"data.json",branch:$("gBranch").value.trim(),token:$("gToken").value.trim()};
+    try{localStorage.setItem(CFG_KEY,JSON.stringify(cfg))}catch(e){}
+    sync();
+  };
+  $("gNow").onclick=sync;
+  $("gOff").onclick=()=>{cfg.token="";try{localStorage.setItem(CFG_KEY,JSON.stringify(cfg))}catch(e){}fillSync();sha=null;setStatus("Disconnected. Data is saved on this device only.")};
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)sync()});
+  setInterval(()=>{if(!document.hidden)sync()},60000);
+  sync();
+}
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const nm=(arr,id)=>(arr.find(x=>x.id===id)||{name:"(deleted)"}).name;
@@ -246,7 +363,7 @@ $("impBtn").onclick=()=>$("impFile").click();
 $("impFile").onchange=e=>{
   const f=e.target.files[0];if(!f)return;const r=new FileReader();
   r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.staff||!d.lect||!d.labs||!d.logs)throw 0;
-    if(!confirm("This replaces all current data. Continue?"))return;db=d;save();render();$("dataMsg").style.color="var(--accent)";$("dataMsg").textContent="Backup restored."}
+    if(!confirm("This replaces all current data. Continue?"))return;db=d;db.del=db.del||{};COLS.forEach(c=>db[c]=db[c]||[]);save();render();$("dataMsg").style.color="var(--accent)";$("dataMsg").textContent="Backup restored."}
     catch{$("dataMsg").style.color="var(--warn)";$("dataMsg").textContent="That file is not a valid backup."}};
   r.readAsText(f);e.target.value="";
 };
@@ -261,6 +378,7 @@ function render(){
   renderLog();renderReport();
 }
 render();
+startSync();
 </script>
 </body>
 </html>
