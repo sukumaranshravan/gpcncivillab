@@ -137,6 +137,13 @@ th{color:var(--mute);font-weight:600;font-size:13px}
     <div style="margin-bottom:12px"><label for="gToken">Personal access token</label><input id="gToken" type="password" placeholder="github_pat_..." autocomplete="off"></div>
     <p class="msg" id="syncMsg"></p>
     <div class="tools"><button class="btn" id="gSave">Save and connect</button><button class="btn ghost" id="gNow">Sync now</button><button class="btn ghost" id="gOff">Disconnect</button></div>
+    <div id="linkBox" style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px">
+      <h2>Set up other staff with one link</h2>
+      <p style="color:var(--mute);margin-top:0;font-size:14px">Once you are connected, create a setup link and send it to your colleagues (for example on WhatsApp). When they open it, the page connects itself. They need no GitHub account. Treat the link like a password: anyone who has it can edit your lab records.</p>
+      <div class="tools"><button class="btn ghost" id="gLink">Create setup link</button></div>
+      <input id="gLinkOut" readonly style="margin-top:10px;display:none" aria-label="Setup link">
+      <p class="msg" id="linkMsg"></p>
+    </div>
   </div>
 </section>
 
@@ -250,8 +257,29 @@ async function sync(){
   }finally{busy=false;if(again){again=false;sync()}}
 }
 function fillSync(){["Owner","Repo","Path","Branch","Token"].forEach(k=>$("g"+k).value=cfg[k.toLowerCase()]||"")}
+function b64u(s){return btoa(unescape(encodeURIComponent(s)))}
+function importSetup(){
+  const h=location.hash;
+  if(!h.startsWith("#setup="))return;
+  try{
+    const o=JSON.parse(decodeURIComponent(escape(atob(h.slice(7)))));
+    cfg={owner:o.o||"",repo:o.r||"",path:o.p||"data.json",branch:o.b||"",token:o.t||""};
+    localStorage.setItem(CFG_KEY,JSON.stringify(cfg));
+  }catch(e){}
+  history.replaceState(null,"",location.pathname+location.search);
+}
 function startSync(){
+  importSetup();
   fillSync();
+  $("gLink").onclick=()=>{
+    const m=$("linkMsg"),out=$("gLinkOut");
+    if(!connected()){m.textContent="Connect to GitHub first, then create the link.";return}
+    if(location.protocol==="file:"){m.textContent="This page is opened from a file on your device, so a link to it would not work for others. Put the page on GitHub Pages first, open it from its web address, then create the link.";return}
+    const link=location.origin+location.pathname+"#setup="+b64u(JSON.stringify({o:cfg.owner,r:cfg.repo,p:cfg.path,b:cfg.branch,t:cfg.token}));
+    out.style.display="block";out.value=link;out.select();
+    let copied=false;try{navigator.clipboard.writeText(link);copied=true}catch(e){}
+    m.style.color="var(--accent)";m.textContent=copied?"Link copied. Send it to your colleagues.":"Copy the link above and send it to your colleagues.";
+  };
   $("gSave").onclick=()=>{
     cfg={owner:$("gOwner").value.trim(),repo:$("gRepo").value.trim(),path:$("gPath").value.trim()||"data.json",branch:$("gBranch").value.trim(),token:$("gToken").value.trim()};
     try{localStorage.setItem(CFG_KEY,JSON.stringify(cfg))}catch(e){}
