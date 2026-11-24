@@ -37,6 +37,15 @@ th{color:var(--mute);font-weight:600;font-size:13px}
 .checks label{display:flex;align-items:center;gap:6px;color:var(--ink);font-size:14px;background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:5px 12px;margin:0;cursor:pointer}
 .checks input{width:auto}
 .checks label:has(input:checked){background:var(--soft);border-color:var(--accent)}
+.perhead{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px}
+.per{border:1px solid var(--line);border-radius:8px;padding:2px 12px;background:var(--bg);margin-bottom:14px}
+.perrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 0}
+.perrow+.perrow{border-top:1px solid var(--line)}
+.pl{width:104px;font-size:14px;color:var(--mute)}.pl b{color:var(--ink);margin-right:4px}
+.per .checks label{background:var(--card)}
+button.link{background:none;border:0;color:var(--accent);font:inherit;font-size:13px;cursor:pointer;padding:4px 6px}
+.perrow .link{margin-left:auto}
+button.link:hover{text-decoration:underline}
 .msg{color:var(--warn);font-size:13px;min-height:18px;margin:8px 0 0}
 .empty{color:var(--mute);padding:8px 0}
 .tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
@@ -71,18 +80,10 @@ th{color:var(--mute);font-weight:600;font-size:13px}
       <div><label for="lLect">Lecturer</label><select id="lLect"></select></div>
       <div><label for="lHrs">Hours</label><input type="number" id="lHrs" min="0" step="0.5" value="3"></div>
     </div>
-    <label>Periods (FN = 1, 2, 3 &nbsp;·&nbsp; AN = 4, 5, 6)</label>
-    <div class="checks" id="lPer" style="margin-bottom:8px">
-      <span style="align-self:center;color:var(--mute);font-size:13px;font-weight:600">FN</span>
-      <label><input type="checkbox" value="1">1</label><label><input type="checkbox" value="2">2</label><label><input type="checkbox" value="3">3</label>
-      <span style="align-self:center;color:var(--mute);font-size:13px;font-weight:600;margin-left:8px">AN</span>
-      <label><input type="checkbox" value="4">4</label><label><input type="checkbox" value="5">5</label><label><input type="checkbox" value="6">6</label>
-    </div>
-    <div class="tools" style="margin:0 0 14px">
-      <button type="button" class="btn ghost" data-per="1,2,3">Full FN</button>
-      <button type="button" class="btn ghost" data-per="4,5,6">Full AN</button>
-      <button type="button" class="btn ghost" data-per="1,2,3,4,5,6">Full day</button>
-      <button type="button" class="btn ghost" data-per="">Clear</button>
+    <div class="perhead"><label style="margin:0">Periods</label><span><button type="button" class="link" data-per="1,2,3,4,5,6">Full day</button><button type="button" class="link" data-per="">Clear</button></span></div>
+    <div class="per" id="lPer">
+      <div class="perrow"><span class="pl"><b>FN</b> Forenoon</span><div class="checks"><label><input type="checkbox" value="1">1</label><label><input type="checkbox" value="2">2</label><label><input type="checkbox" value="3">3</label></div><button type="button" class="link" data-per="1,2,3">Select all</button></div>
+      <div class="perrow"><span class="pl"><b>AN</b> Afternoon</span><div class="checks"><label><input type="checkbox" value="4">4</label><label><input type="checkbox" value="5">5</label><label><input type="checkbox" value="6">6</label></div><button type="button" class="link" data-per="4,5,6">Select all</button></div>
     </div>
     <label>Lab staff present (at least 2)</label>
     <div class="checks" id="lStaff"></div>
