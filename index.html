@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Department of Civil Engineering, Lab Duty Register</title>
+<title>Dept of Civil Engineering, Lab Duty Register</title>
 <style>
 :root{--bg:#f3f5f2;--card:#fff;--ink:#1d2a26;--mute:#66736e;--line:#d6ddd8;--accent:#1f6f5c;--accent-ink:#fff;--warn:#b3402a;--soft:#e4efe9}
 @media (prefers-color-scheme:dark){:root{--bg:#141b18;--card:#1c2622;--ink:#e6eee9;--mute:#98a8a1;--line:#2d3b35;--accent:#58b99f;--accent-ink:#0f1a16;--warn:#ef8a74;--soft:#233a31}}
@@ -65,7 +65,7 @@ button.link:hover{text-decoration:underline}
 </head>
 <body>
 <header>
-  <h1>Department of Civil Engineering </h1>
+  <h1>Department of Civil Engineering</h1>
   <p>Lab Duty Register</p>
   <p id="syncStat" style="margin-top:4px"></p>
 </header>
@@ -114,7 +114,7 @@ button.link:hover{text-decoration:underline}
     <h2>Bill report</h2>
     <div class="row noprint">
       <div><label for="rMonth">Month</label><input type="month" id="rMonth"></div>
-      <div><label for="rStaff">Lab staff</label><select id="rStaff"></select></div>
+      <div><label for="rStaff">Lab staff name</label><select id="rStaff"></select></div>
       <div><label for="rCollege">College name</label><input id="rCollege"></div>
       <div><label for="rDept">Department</label><input id="rDept"></div>
       <div><label for="rDesig">Designation (selected staff)</label><input id="rDesig"></div>
@@ -429,7 +429,7 @@ function renderLog(){
 
 /* report */
 function reportRows(){
-  const m=$("rMonth").value,s=$("rStaff").value;
+  const m=$("rMonth").value,s=$("rStaff").value==="__all"?"":$("rStaff").value;
   return db.logs.filter(l=>(!m||l.date.startsWith(m))&&(!s||l.staff.includes(s))).sort((a,b)=>a.date.localeCompare(b.date)||Math.min(...(a.periods||[9]))-Math.min(...(b.periods||[9])));
 }
 function sheet(rows,s,mo){
@@ -483,22 +483,23 @@ function listView(rows){
 }
 function renderReport(){
   if(!$("rMonth").value)$("rMonth").value=today().slice(0,7);
-  const cur=$("rStaff").value;
-  $("rStaff").innerHTML=opts(db.staff,cur,"All staff");
-  const s=$("rStaff").value,mo=$("rMonth").value;
+  let cur=$("rStaff").value;
+  if(!cur){try{cur=localStorage.getItem(KEY+".me")||""}catch(e){}}
+  $("rStaff").innerHTML=opts(db.staff,cur,"Select your name")+`<option value="__all"${cur==="__all"?" selected":""}>All staff (summary)</option>`;
+  const s=$("rStaff").value,mo=$("rMonth").value,one=s&&s!=="__all";
   const fill=(id,v)=>{if(document.activeElement!==$(id))$(id).value=v};
   fill("rCollege",getSet("college"));fill("rDept",getSet("dept","Civil Engineering"));fill("rMax",getSet("max"));
-  fill("rDesig",s?getSet("desig-"+s):"");fill("rPrev",s?getSet("prev-"+s+"-"+mo):"");
-  $("rDesig").disabled=$("rPrev").disabled=!s;
+  fill("rDesig",one?getSet("desig-"+s):"");fill("rPrev",one?getSet("prev-"+s+"-"+mo):"");
+  $("rDesig").disabled=$("rPrev").disabled=!one;
   const rows=reportRows();
-  $("repOut").innerHTML=s?sheet(rows,s,mo):listView(rows);
+  $("repOut").innerHTML=one?sheet(rows,s,mo):s==="__all"?listView(rows):`<div class="empty">Choose your name above to generate your bill for the selected month.</div>`;
 }
-$("rMonth").onchange=renderReport;$("rStaff").onchange=renderReport;
+$("rMonth").onchange=renderReport;$("rStaff").onchange=()=>{try{localStorage.setItem(KEY+".me",$("rStaff").value)}catch(e){}renderReport()};
 $("rCollege").onchange=()=>{setSet("college",$("rCollege").value.trim());renderReport()};
 $("rDept").onchange=()=>{setSet("dept",$("rDept").value.trim());renderReport()};
 $("rMax").onchange=()=>{setSet("max",$("rMax").value);renderReport()};
-$("rDesig").onchange=()=>{const s=$("rStaff").value;if(s)setSet("desig-"+s,$("rDesig").value.trim());renderReport()};
-$("rPrev").onchange=()=>{const s=$("rStaff").value;if(s)setSet("prev-"+s+"-"+$("rMonth").value,$("rPrev").value);renderReport()};
+$("rDesig").onchange=()=>{const s=$("rStaff").value;if(s&&s!=="__all")setSet("desig-"+s,$("rDesig").value.trim());renderReport()};
+$("rPrev").onchange=()=>{const s=$("rStaff").value;if(s&&s!=="__all")setSet("prev-"+s+"-"+$("rMonth").value,$("rPrev").value);renderReport()};
 $("csvBtn").onclick=()=>{
   const q=v=>`"${String(v).replace(/"/g,'""')}"`;
   const lines=[["Date","Periods","Entry","Batch","Lecturer","Staff","Hours","Remarks"].join(",")].concat(reportRows().map(l=>{const lab=tType(l)==="lab";return [fmt(l.date),perTxt(l.periods),whatT(l),batchTxt(l),lab?nm(db.lect,l.lect):"",l.staff.map(x=>nm(db.staff,x)).join("; "),lab?l.hrs:"",lab?(l.note||""):""].map(q).join(",")}));
