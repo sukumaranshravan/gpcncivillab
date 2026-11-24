@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Department of Civil Engineering GPC-Naduvil,Lab Duty Register</title>
+<title>Lab Duty Register</title>
 <style>
 :root{--bg:#f3f5f2;--card:#fff;--ink:#1d2a26;--mute:#66736e;--line:#d6ddd8;--accent:#1f6f5c;--accent-ink:#fff;--warn:#b3402a;--soft:#e4efe9}
 @media (prefers-color-scheme:dark){:root{--bg:#141b18;--card:#1c2622;--ink:#e6eee9;--mute:#98a8a1;--line:#2d3b35;--accent:#58b99f;--accent-ink:#0f1a16;--warn:#ef8a74;--soft:#233a31}}
@@ -51,13 +51,22 @@ button.link:hover{text-decoration:underline}
 .tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .tag{display:inline-block;background:var(--soft);border-radius:4px;padding:1px 7px;margin:1px 2px 1px 0;font-size:13px}
 .tot{font-weight:600}
-@media print{nav,header p,.noprint,button{display:none!important}body{background:#fff;color:#000}.card{border:0;padding:0}section{display:none}section.on{display:block}}
+.hide{display:none!important}
+.paper{background:#fff;color:#000;padding:14px;min-width:820px}
+.bh{text-align:center;font-weight:700;font-size:16px;margin-bottom:6px}
+.meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;margin-bottom:6px}
+.bill{border-collapse:collapse;width:100%;font-size:12px;color:#000}
+.bill th,.bill td{border:1px solid #333;padding:3px 6px;vertical-align:middle;color:#000;background:#fff}
+.bill th{font-size:11px;text-align:center;font-weight:700}
+.bill td{height:24px}.bill td.c{text-align:center}.bill .nw{white-space:nowrap}
+.bill .lbl{font-weight:700;font-size:11px}.bill .cert{font-size:10px;line-height:1.35}.bill .sig{height:56px;vertical-align:top;font-size:11px}
+@media print{@page{size:A4 landscape;margin:8mm}header,nav,.noprint,button{display:none!important}body{background:#fff;color:#000}main{padding:0;max-width:none}.card{border:0;padding:0;margin:0}section{display:none}section.on{display:block}.paper{padding:0;min-width:0}.bill tr{page-break-inside:avoid}}
 </style>
 </head>
 <body>
 <header>
-  <h1>Department of Civil Engineering GPC-Naduvil</h1>
-  <p>Lab Duty Register</p>
+  <h1>Lab Duty Register</h1>
+  <p>Record who worked which lab, with which lecturer, then pull a clean list for your bill.</p>
   <p id="syncStat" style="margin-top:4px"></p>
 </header>
 <nav id="nav">
@@ -76,18 +85,21 @@ button.link:hover{text-decoration:underline}
     <h2 id="logTitle">Log a lab session</h2>
     <div class="row">
       <div><label for="lDate">Date</label><input type="date" id="lDate"></div>
-      <div><label for="lLab">Lab / subject</label><select id="lLab"></select></div>
-      <div><label for="lLect">Lecturer</label><select id="lLect"></select></div>
-      <div><label for="lHrs">Hours</label><input type="number" id="lHrs" min="0" step="0.5" value="3"></div>
+      <div><label for="lType">Entry type</label><select id="lType"><option value="lab">Lab session</option><option value="work">Other academic work (record only)</option><option value="remark">Remark / duty only</option></select></div>
+      <div class="forlab"><label for="lLab">Lab / subject</label><select id="lLab"></select></div>
+      <div class="forlab"><label for="lLect">Lecturer</label><select id="lLect"></select></div>
+      <div class="forlab"><label for="lBatch">Batch</label><select id="lBatch"><option>ALL</option><option>BATCH-1</option><option>BATCH-2</option><option>BATCH-3</option></select></div>
+      <div class="forlab"><label for="lHrs">Hours</label><input type="number" id="lHrs" min="0" step="0.5" value="3"></div>
+      <div class="fornon hide" style="grid-column:1/-1"><label for="lDesc">Description (shown in the bill)</label><input id="lDesc" placeholder="e.g. Course file work, Special class, Exam invigilation duty"></div>
     </div>
-    <div class="perhead"><label style="margin:0">Periods</label><span><button type="button" class="link" data-per="1,2,3,4,5,6">Full day</button><button type="button" class="link" data-per="">Clear</button></span></div>
+    <div class="perhead"><label style="margin:0" id="lPerLbl">Periods</label><span><button type="button" class="link" data-per="1,2,3,4,5,6">Full day</button><button type="button" class="link" data-per="">Clear</button></span></div>
     <div class="per" id="lPer">
       <div class="perrow"><span class="pl"><b>FN</b> Forenoon</span><div class="checks"><label><input type="checkbox" value="1">1</label><label><input type="checkbox" value="2">2</label><label><input type="checkbox" value="3">3</label></div><button type="button" class="link" data-per="1,2,3">Select all</button></div>
       <div class="perrow"><span class="pl"><b>AN</b> Afternoon</span><div class="checks"><label><input type="checkbox" value="4">4</label><label><input type="checkbox" value="5">5</label><label><input type="checkbox" value="6">6</label></div><button type="button" class="link" data-per="4,5,6">Select all</button></div>
     </div>
-    <label>Lab staff present (at least 2)</label>
+    <label id="lStaffLbl">Lab staff present (at least 2)</label>
     <div class="checks" id="lStaff"></div>
-    <div style="margin-top:12px"><label for="lNote">Remarks (optional)</label><input id="lNote"></div>
+    <div class="forlab" style="margin-top:12px"><label for="lNote">Remarks (optional, shown in the bill)</label><input id="lNote"></div>
     <p class="msg" id="logMsg"></p>
     <div class="tools"><button class="btn" id="logSave">Save session</button><button class="btn ghost" id="logCancel" style="display:none">Cancel edit</button></div>
   </div>
@@ -103,6 +115,11 @@ button.link:hover{text-decoration:underline}
     <div class="row noprint">
       <div><label for="rMonth">Month</label><input type="month" id="rMonth"></div>
       <div><label for="rStaff">Lab staff</label><select id="rStaff"></select></div>
+      <div><label for="rCollege">College name</label><input id="rCollege"></div>
+      <div><label for="rDept">Department</label><input id="rDept"></div>
+      <div><label for="rDesig">Designation (selected staff)</label><input id="rDesig"></div>
+      <div><label for="rPrev">Hours done in previous months</label><input id="rPrev" type="number" min="0" step="0.5"></div>
+      <div><label for="rMax">Maximum teaching hours</label><input id="rMax" type="number" min="0" step="0.5"></div>
     </div>
     <div class="tools noprint"><button class="btn" onclick="window.print()">Print / save as PDF</button><button class="btn ghost" id="csvBtn">Download CSV</button></div>
   </div>
@@ -115,7 +132,7 @@ button.link:hover{text-decoration:underline}
     <div class="row">
       <div><label for="bName">Lab / subject name</label><input id="bName" placeholder="e.g. Physics Lab I"></div>
       <div><label for="bLect">Usual lecturer</label><select id="bLect"></select></div>
-      <div><label for="bCode">Code / semester (optional)</label><input id="bCode" placeholder="e.g. Sem 3"></div>
+      <div><label for="bCode">Class (as shown in the bill)</label><input id="bCode" placeholder="e.g. S3CE"></div>
     </div>
     <div class="tools"><button class="btn" id="labSave">Save lab</button><button class="btn ghost" id="labCancel" style="display:none">Cancel</button></div>
   </div>
@@ -180,7 +197,7 @@ const KEY="labDutyRegister.v1";
 let db={staff:[],lect:[],labs:[],logs:[]};
 try{const s=localStorage.getItem(KEY);if(s)db=JSON.parse(s)}catch(e){}
 db.del=db.del||{};
-["staff","lect","labs","logs"].forEach(c=>db[c]=db[c]||[]);
+["staff","lect","labs","logs","set"].forEach(c=>db[c]=db[c]||[]);
 if(!db.staff.length&&!db.lect.length&&!db.labs.length&&!db.logs.length){
   db.staff=["Staff 1","Staff 2","Staff 3","Staff 4"].map((n,i)=>({id:"seed"+(i+1),name:n}));
 }
@@ -188,7 +205,7 @@ let editLog=null,editLab=null;
 function uid(){return Math.random().toString(36).slice(2,9)}
 
 /* ---------- GitHub sync ---------- */
-const COLS=["staff","lect","labs","logs"];
+const COLS=["staff","lect","labs","logs","set"];
 const CFG_KEY=KEY+".sync";
 let cfg={owner:"",repo:"",branch:"",path:"data.json",token:""};
 try{Object.assign(cfg,JSON.parse(localStorage.getItem(CFG_KEY)||"{}"))}catch(e){}
@@ -346,38 +363,63 @@ $("labCancel").onclick=()=>{editLab=null;$("bName").value="";$("bCode").value=""
 function editLabFn(id){const l=db.labs.find(x=>x.id===id);editLab=id;render();$("bName").value=l.name;$("bCode").value=l.code||"";$("bLect").value=l.lect||"";window.scrollTo(0,0)}
 
 /* log */
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const dshort=d=>{const[y,m,dd]=d.split("-");return (+dd)+"-"+MONTHS[+m-1].slice(0,3)+"-"+y.slice(2)};
+const getSet=(id,d="")=>{const r=db.set.find(x=>x.id===id);return r?r.v:d};
+function setSet(id,v){const r=db.set.find(x=>x.id===id);if(r)r.v=v;else db.set.push({id,v});save()}
+const tType=l=>l.type||"lab";
+function whatT(l){const t=tType(l);if(t==="lab")return nm(db.labs,l.lab)+(l.batch&&l.batch!=="ALL"?" ("+l.batch+")":"");return (t==="work"?"Other work: ":"Remark: ")+(l.desc||"")}
+const what=l=>esc(whatT(l));
+const nfmt=x=>String(+(+x).toFixed(2));
+function applyType(){
+  const t=$("lType").value;
+  document.querySelectorAll(".forlab").forEach(e=>e.classList.toggle("hide",t!=="lab"));
+  document.querySelectorAll(".fornon").forEach(e=>e.classList.toggle("hide",t==="lab"));
+  $("lStaffLbl").textContent=t==="lab"?"Lab staff present (at least 2)":"Lab staff who did this (at least 1)";
+  $("lPerLbl").textContent=t==="remark"?"Periods (optional)":"Periods";
+}
+$("lType").onchange=applyType;
 $("lLab").onchange=()=>{const l=db.labs.find(x=>x.id===$("lLab").value);if(l&&l.lect)$("lLect").value=l.lect};
 $("logSave").onclick=()=>{
+  const t=$("lType").value,m=$("logMsg");
   const staff=[...document.querySelectorAll("#lStaff input:checked")].map(i=>i.value);
   const periods=[...document.querySelectorAll("#lPer input:checked")].map(i=>+i.value).sort((a,b)=>a-b);
-  const rec={date:$("lDate").value,lab:$("lLab").value,lect:$("lLect").value,periods,hrs:parseFloat($("lHrs").value)||0,staff,note:$("lNote").value.trim()};
-  const m=$("logMsg");
+  const rec={type:t,date:$("lDate").value,periods,staff};
+  if(t==="lab")Object.assign(rec,{lab:$("lLab").value,lect:$("lLect").value,batch:$("lBatch").value,hrs:parseFloat($("lHrs").value)||0,note:$("lNote").value.trim(),desc:""});
+  else Object.assign(rec,{lab:"",lect:"",batch:"",hrs:0,note:"",desc:$("lDesc").value.trim()});
   if(!rec.date)return m.textContent="Pick a date.";
-  if(!rec.lab)return m.textContent="Choose a lab. Add labs in the Labs tab first.";
-  if(!rec.lect)return m.textContent="Choose a lecturer. Add lecturers in the Lecturers tab first.";
-  if(!periods.length)return m.textContent="Select at least one period (FN 1-3 or AN 4-6).";
-  if(staff.length<2)return m.textContent="At least 2 lab staff must be selected.";
+  if(t==="lab"){
+    if(!rec.lab)return m.textContent="Choose a lab. Add labs in the Labs tab first.";
+    if(!rec.lect)return m.textContent="Choose a lecturer. Add lecturers in the Lecturers tab first.";
+    if(!periods.length)return m.textContent="Select at least one period (FN 1-3 or AN 4-6).";
+    if(staff.length<2)return m.textContent="At least 2 lab staff must be selected.";
+  }else{
+    if(!rec.desc)return m.textContent="Describe the work or duty.";
+    if(t==="work"&&!periods.length)return m.textContent="Select the periods for this work.";
+    if(!staff.length)return m.textContent="Select the staff member(s).";
+  }
   const clash=db.logs.find(l=>l.id!==editLog&&l.date===rec.date&&(l.periods||[]).some(p=>periods.includes(p))&&l.staff.some(x=>staff.includes(x)));
-  if(clash){const who=clash.staff.filter(x=>staff.includes(x)).map(x=>nm(db.staff,x)).join(", ");return m.textContent=who+" already logged for "+nm(db.labs,clash.lab)+" ("+perTxt(clash.periods)+") on this date. Check the periods.";}
+  if(clash){const who=clash.staff.filter(x=>staff.includes(x)).map(x=>nm(db.staff,x)).join(", ");return m.textContent=who+" already logged for "+whatT(clash)+" ("+perTxt(clash.periods)+") on this date. Check the periods.";}
   if(editLog){Object.assign(db.logs.find(x=>x.id===editLog),rec)}else db.logs.push({id:uid(),...rec});
-  m.textContent="";editLog=null;$("lNote").value="";setPer([]);save();render();
+  m.textContent="";editLog=null;$("lNote").value="";$("lDesc").value="";setPer([]);save();render();
 };
 $("logCancel").onclick=()=>{editLog=null;render()};
 function editLogFn(id){editLog=id;render();window.scrollTo(0,0)}
-function delLog(id){if(confirm("Delete this session?")){db.logs=db.logs.filter(x=>x.id!==id);save();render()}}
+function delLog(id){if(confirm("Delete this entry?")){db.logs=db.logs.filter(x=>x.id!==id);save();render()}}
 
 function renderLog(){
   const e=editLog&&db.logs.find(x=>x.id===editLog);
-  $("logTitle").textContent=e?"Edit session":"Log a lab session";
+  $("logTitle").textContent=e?"Edit entry":"Log an entry";
   $("logCancel").style.display=e?"":"none";
   $("lDate").value=e?e.date:($("lDate").value||today());
   $("lLab").innerHTML=opts(db.labs,e?e.lab:$("lLab").value,"Choose lab");
   $("lLect").innerHTML=opts(db.lect,e?e.lect:$("lLect").value,"Choose lecturer");
-  if(e){$("lHrs").value=e.hrs;$("lNote").value=e.note||"";setPer(e.periods||[])}
+  if(e){$("lType").value=tType(e);$("lBatch").value=e.batch||"ALL";$("lDesc").value=e.desc||"";$("lHrs").value=tType(e)==="lab"?e.hrs:3;$("lNote").value=e.note||"";setPer(e.periods||[])}
+  applyType();
   const sel=e?e.staff:[...document.querySelectorAll("#lStaff input:checked")].map(i=>i.value);
   $("lStaff").innerHTML=db.staff.length?db.staff.map(s=>`<label><input type="checkbox" value="${s.id}"${sel.includes(s.id)?" checked":""}>${esc(s.name)}</label>`).join(""):`<span class="empty">Add lab staff first.</span>`;
   const rows=[...db.logs].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,30);
-  $("logList").innerHTML=rows.length?`<table><thead><tr><th>Date</th><th>Periods</th><th>Lab</th><th>Lecturer</th><th>Staff</th><th>Hrs</th><th></th></tr></thead><tbody>${rows.map(l=>`<tr><td>${fmt(l.date)}</td><td>${perTxt(l.periods)}</td><td>${esc(nm(db.labs,l.lab))}</td><td>${esc(nm(db.lect,l.lect))}</td><td>${l.staff.map(s=>`<span class="tag">${esc(nm(db.staff,s))}</span>`).join("")}</td><td>${l.hrs}</td><td style="white-space:nowrap"><button class="edit" onclick="editLogFn('${l.id}')">Edit</button><button class="del" onclick="delLog('${l.id}')">Delete</button></td></tr>`).join("")}</tbody></table>`:`<div class="empty">No sessions logged yet.</div>`;
+  $("logList").innerHTML=rows.length?`<table><thead><tr><th>Date</th><th>Periods</th><th>Entry</th><th>Lecturer</th><th>Staff</th><th>Hrs</th><th></th></tr></thead><tbody>${rows.map(l=>{const lab=tType(l)==="lab";return `<tr><td>${fmt(l.date)}</td><td>${perTxt(l.periods)}</td><td>${what(l)}</td><td>${lab?esc(nm(db.lect,l.lect)):"-"}</td><td>${l.staff.map(s=>`<span class="tag">${esc(nm(db.staff,s))}</span>`).join("")}</td><td>${lab?l.hrs:"-"}</td><td style="white-space:nowrap"><button class="edit" onclick="editLogFn('${l.id}')">Edit</button><button class="del" onclick="delLog('${l.id}')">Delete</button></td></tr>`}).join("")}</tbody></table>`:`<div class="empty">No entries logged yet.</div>`;
 }
 
 /* report */
@@ -385,22 +427,76 @@ function reportRows(){
   const m=$("rMonth").value,s=$("rStaff").value;
   return db.logs.filter(l=>(!m||l.date.startsWith(m))&&(!s||l.staff.includes(s))).sort((a,b)=>a.date.localeCompare(b.date)||Math.min(...(a.periods||[9]))-Math.min(...(b.periods||[9])));
 }
+function sheet(rows,s,mo){
+  if(!rows.length)return `<div class="empty">No entries for this staff member in this month.</div>`;
+  const lab=rows.filter(l=>tType(l)==="lab");
+  const groups=[];
+  lab.forEach(l=>{let g=groups.find(x=>x.lab===l.lab);if(!g){g={lab:l.lab,cols:[]};groups.push(g)}const b=l.batch||"ALL";if(!g.cols.some(c=>c.b===b))g.cols.push({k:l.lab+"|"+b,b})});
+  groups.forEach(g=>g.cols.sort((a,b)=>a.b.localeCompare(b.b)));
+  if(!groups.length)groups.push({lab:null,cols:[{k:"",b:""}]});
+  const flat=groups.flatMap(g=>g.cols),n=flat.length;
+  const L=g=>db.labs.find(x=>x.id===g.lab)||{name:"",code:""};
+  const per=a=>[...new Set(a)].sort((x,y)=>x-y).join(",");
+  const dates=[...new Set(rows.map(l=>l.date))].sort();
+  const body=dates.map((d,i)=>{
+    const day=rows.filter(l=>l.date===d);
+    const cells=flat.map(c=>`<td class="c">${per(day.filter(l=>tType(l)==="lab"&&(l.lab+"|"+(l.batch||"ALL"))===c.k).flatMap(l=>l.periods||[]))}</td>`).join("");
+    const works=day.filter(l=>tType(l)==="work");
+    const rem=[...day.filter(l=>tType(l)==="remark").map(l=>l.desc||""),...day.filter(l=>tType(l)==="lab"&&l.note).map(l=>l.note)].map(esc).join("; ");
+    return `<tr><td class="c">${i+1}</td><td class="c nw">${dshort(d)}</td>${cells}<td>${works.map(l=>esc(l.desc||"")).join("<br>")}</td><td class="c">${works.map(l=>per(l.periods||[])).join("<br>")}</td><td>${rem}</td></tr>`;
+  }).join("");
+  const cur=lab.reduce((a,l)=>a+(l.hrs||0),0);
+  const prev=parseFloat(getSet("prev-"+s+"-"+mo))||0;
+  const mx=getSet("max");
+  const month=mo?MONTHS[+mo.slice(5)-1]+" "+mo.slice(0,4):"All months";
+  const foot=(t,v)=>`<tr><td colspan="2" class="lbl">${t}</td><td colspan="${n}" class="c">${v}</td><td colspan="3"></td></tr>`;
+  const cert="As per circular L1/23290/2017/DTE dt 22/06/2017 certified that the above guest faculty has engaged classroom works as well as other academic works on the days mentioned above, verified as per class log and subject logs. Also certified that particulars furnished by the faculty are correct and hence claim is justified.";
+  return `<div class="paper">
+<div class="bh">${esc(getSet("college")||"COLLEGE NAME")}</div>
+<div class="meta"><span>Statement of classes and academic work conducted by</span><span>Name: <b>${esc(nm(db.staff,s))}</b></span><span>Designation: <b>${esc(getSet("desig-"+s))}</b></span><span>Department: <b>${esc(getSet("dept","Civil Engineering"))}</b></span><span>During the month of <b>${month}</b></span></div>
+<table class="bill"><thead>
+<tr><th rowspan="4">Sl.No.</th><th>Classes</th>${groups.map(g=>`<th colspan="${g.cols.length}">${esc(L(g).code)}</th>`).join("")}<th rowspan="4" style="width:22%">OTHER ACADEMIC WORKS<br>(Specify the work)</th><th rowspan="4" style="width:7%">PERIODS</th><th rowspan="4" style="width:22%">REMARKS</th></tr>
+<tr><th>SUBJECTS</th>${groups.map(g=>`<th colspan="${g.cols.length}">${esc(L(g).name)}</th>`).join("")}</tr>
+<tr><th></th>${flat.map(c=>`<th>${esc(c.b)}</th>`).join("")}</tr>
+<tr><th>DATE</th>${flat.map(()=>`<th>PERIODS</th>`).join("")}</tr>
+</thead><tbody>${body}
+${foot("Completed teaching hours in the previous month/s",nfmt(prev))}
+${foot("Completed teaching hours in current month",nfmt(cur))}
+${foot("Cumulative Hours",nfmt(prev+cur))}
+${foot("Maximum Teaching Hours",mx===""?"":nfmt(mx))}
+</tbody></table>
+<table class="bill" style="margin-top:-1px"><tr><td colspan="2" class="c lbl" style="height:34px">For HoD</td><td></td></tr>
+<tr><td class="c lbl" style="width:36%">No. of days worked:</td><td class="c lbl" style="width:12%">${dates.length}</td><td class="cert">${cert}</td></tr>
+<tr><td colspan="2" class="sig">Signature of Employee:</td><td class="sig">Signature of HoD with name and designation:</td></tr></table>
+</div>`;
+}
+function listView(rows){
+  if(!rows.length)return `<div class="empty">No entries for this selection.</div>`;
+  const hr=r=>r.reduce((a,l)=>a+(tType(l)==="lab"?(l.hrs||0):0),0);
+  const sum=`<h2>Summary by staff</h2><table><thead><tr><th>Staff</th><th>Days</th><th>Lab periods</th><th>Lab hours</th></tr></thead><tbody>${db.staff.map(p=>{const r=rows.filter(l=>l.staff.includes(p.id));return `<tr><td>${esc(p.name)}</td><td>${new Set(r.map(l=>l.date)).size}</td><td>${r.filter(l=>tType(l)==="lab").reduce((a,l)=>a+(l.periods||[]).length,0)}</td><td>${nfmt(hr(r))}</td></tr>`}).join("")}</tbody></table><p class="noprint" style="color:var(--mute);font-size:13px">Choose a lab staff member above to see the bill sheet.</p>`;
+  return sum+`<h2>All entries</h2><table><thead><tr><th>Date</th><th>Periods</th><th>Entry</th><th>Lecturer</th><th>Staff</th><th>Hrs</th></tr></thead><tbody>${rows.map(l=>{const lab=tType(l)==="lab";return `<tr><td>${fmt(l.date)}</td><td>${perTxt(l.periods)}</td><td>${what(l)}</td><td>${lab?esc(nm(db.lect,l.lect)):"-"}</td><td>${l.staff.map(x=>esc(nm(db.staff,x))).join(", ")}</td><td>${lab?l.hrs:"-"}</td></tr>`}).join("")}</tbody></table>`;
+}
 function renderReport(){
   if(!$("rMonth").value)$("rMonth").value=today().slice(0,7);
   const cur=$("rStaff").value;
   $("rStaff").innerHTML=opts(db.staff,cur,"All staff");
-  const rows=reportRows(),s=$("rStaff").value;
-  const who=s?nm(db.staff,s):"All staff";
-  if(!rows.length){$("repOut").innerHTML=`<div class="empty">No sessions for this selection.</div>`;return}
-  const tot=rows.reduce((a,l)=>a+l.hrs,0);
-  let sum="";
-  if(!s){sum=`<h2>Summary by staff</h2><table><thead><tr><th>Staff</th><th>Sessions</th><th>Periods</th><th>Hours</th></tr></thead><tbody>${db.staff.map(p=>{const r=rows.filter(l=>l.staff.includes(p.id));return `<tr><td>${esc(p.name)}</td><td>${r.length}</td><td>${r.reduce((a,l)=>a+(l.periods||[]).length,0)}</td><td>${r.reduce((a,l)=>a+l.hrs,0)}</td></tr>`}).join("")}</tbody></table><br>`}
-  $("repOut").innerHTML=`${sum}<h2>${esc(who)} · ${$("rMonth").value||"All months"}</h2><table><thead><tr><th>Date</th><th>Periods</th><th>Lab</th><th>Lecturer</th><th>Staff together</th><th>Hrs</th></tr></thead><tbody>${rows.map(l=>`<tr><td>${fmt(l.date)}</td><td>${perTxt(l.periods)}</td><td>${esc(nm(db.labs,l.lab))}</td><td>${esc(nm(db.lect,l.lect))}</td><td>${l.staff.map(x=>esc(nm(db.staff,x))).join(", ")}</td><td>${l.hrs}</td></tr>`).join("")}<tr class="tot"><td colspan="5">Total · ${rows.length} sessions · ${rows.reduce((a,l)=>a+(l.periods||[]).length,0)} periods</td><td>${tot}</td></tr></tbody></table>`;
+  const s=$("rStaff").value,mo=$("rMonth").value;
+  const fill=(id,v)=>{if(document.activeElement!==$(id))$(id).value=v};
+  fill("rCollege",getSet("college"));fill("rDept",getSet("dept","Civil Engineering"));fill("rMax",getSet("max"));
+  fill("rDesig",s?getSet("desig-"+s):"");fill("rPrev",s?getSet("prev-"+s+"-"+mo):"");
+  $("rDesig").disabled=$("rPrev").disabled=!s;
+  const rows=reportRows();
+  $("repOut").innerHTML=s?sheet(rows,s,mo):listView(rows);
 }
 $("rMonth").onchange=renderReport;$("rStaff").onchange=renderReport;
+$("rCollege").onchange=()=>{setSet("college",$("rCollege").value.trim());renderReport()};
+$("rDept").onchange=()=>{setSet("dept",$("rDept").value.trim());renderReport()};
+$("rMax").onchange=()=>{setSet("max",$("rMax").value);renderReport()};
+$("rDesig").onchange=()=>{const s=$("rStaff").value;if(s)setSet("desig-"+s,$("rDesig").value.trim());renderReport()};
+$("rPrev").onchange=()=>{const s=$("rStaff").value;if(s)setSet("prev-"+s+"-"+$("rMonth").value,$("rPrev").value);renderReport()};
 $("csvBtn").onclick=()=>{
   const q=v=>`"${String(v).replace(/"/g,'""')}"`;
-  const lines=[["Date","Periods","Lab","Lecturer","Staff","Hours","Remarks"].join(",")].concat(reportRows().map(l=>[fmt(l.date),perTxt(l.periods),nm(db.labs,l.lab),nm(db.lect,l.lect),l.staff.map(x=>nm(db.staff,x)).join("; "),l.hrs,l.note||""].map(q).join(",")));
+  const lines=[["Date","Periods","Entry","Lecturer","Staff","Hours","Remarks"].join(",")].concat(reportRows().map(l=>{const lab=tType(l)==="lab";return [fmt(l.date),perTxt(l.periods),whatT(l),lab?nm(db.lect,l.lect):"",l.staff.map(x=>nm(db.staff,x)).join("; "),lab?l.hrs:"",lab?(l.note||""):""].map(q).join(",")}));
   dl("lab-duty-"+($("rMonth").value||"all")+".csv","text/csv","\ufeff"+lines.join("\n"));
 };
 
@@ -422,7 +518,7 @@ function render(){
   $("bLect").innerHTML=opts(db.lect,$("bLect").value,"None");
   $("labTitle").textContent=editLab?"Edit lab":"Add a lab";
   $("labCancel").style.display=editLab?"":"none";
-  $("labList").innerHTML=db.labs.length?`<table><thead><tr><th>Lab / subject</th><th>Code</th><th>Usual lecturer</th><th></th></tr></thead><tbody>${db.labs.map(l=>`<tr><td>${esc(l.name)}</td><td>${esc(l.code||"")}</td><td>${esc(l.lect?nm(db.lect,l.lect):"")}</td><td style="text-align:right;white-space:nowrap"><button class="edit" onclick="editLabFn('${l.id}')">Edit</button><button class="del" onclick="remove('labs','${l.id}')">Delete</button></td></tr>`).join("")}</tbody></table>`:`<div class="empty">No labs yet. Add your subjects above.</div>`;
+  $("labList").innerHTML=db.labs.length?`<table><thead><tr><th>Lab / subject</th><th>Class</th><th>Usual lecturer</th><th></th></tr></thead><tbody>${db.labs.map(l=>`<tr><td>${esc(l.name)}</td><td>${esc(l.code||"")}</td><td>${esc(l.lect?nm(db.lect,l.lect):"")}</td><td style="text-align:right;white-space:nowrap"><button class="edit" onclick="editLabFn('${l.id}')">Edit</button><button class="del" onclick="remove('labs','${l.id}')">Delete</button></td></tr>`).join("")}</tbody></table>`:`<div class="empty">No labs yet. Add your subjects above.</div>`;
   renderLog();renderReport();
 }
 document.querySelectorAll("[data-per]").forEach(b=>b.onclick=()=>setPer(b.dataset.per?b.dataset.per.split(",").map(Number):[]));
