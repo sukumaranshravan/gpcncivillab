@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lab Duty Register</title>
+<title>Department of Civil Engineering</title>
 <style>
 :root{--bg:#f3f5f2;--card:#fff;--ink:#1d2a26;--mute:#66736e;--line:#d6ddd8;--accent:#1f6f5c;--accent-ink:#fff;--warn:#b3402a;--soft:#e4efe9}
 @media (prefers-color-scheme:dark){:root{--bg:#141b18;--card:#1c2622;--ink:#e6eee9;--mute:#98a8a1;--line:#2d3b35;--accent:#58b99f;--accent-ink:#0f1a16;--warn:#ef8a74;--soft:#233a31}}
@@ -65,8 +65,8 @@ button.link:hover{text-decoration:underline}
 </head>
 <body>
 <header>
-  <h1>Lab Duty Register</h1>
-  <p>Record who worked which lab, with which lecturer, then pull a clean list for your bill.</p>
+  <h1>Department of Civil Engineering</h1>
+  <p>Lab Duty Log</p>
   <p id="syncStat" style="margin-top:4px"></p>
 </header>
 <nav id="nav">
@@ -368,8 +368,9 @@ const dshort=d=>{const[y,m,dd]=d.split("-");return (+dd)+"-"+MONTHS[+m-1].slice(
 const getSet=(id,d="")=>{const r=db.set.find(x=>x.id===id);return r?r.v:d};
 function setSet(id,v){const r=db.set.find(x=>x.id===id);if(r)r.v=v;else db.set.push({id,v});save()}
 const tType=l=>l.type||"lab";
-function whatT(l){const t=tType(l);if(t==="lab")return nm(db.labs,l.lab)+(l.batch&&l.batch!=="ALL"?" ("+l.batch+")":"");return (t==="work"?"Other work: ":"Remark: ")+(l.desc||"")}
+function whatT(l){const t=tType(l);if(t==="lab")return nm(db.labs,l.lab);return (t==="work"?"Other work: ":"Remark: ")+(l.desc||"")}
 const what=l=>esc(whatT(l));
+const batchTxt=l=>tType(l)!=="lab"?"-":(!l.batch||l.batch==="ALL"?"All students":"Batch "+l.batch.slice(-1));
 const nfmt=x=>String(+(+x).toFixed(2));
 const getBatch=()=>(document.querySelector("#lBatch input:checked")||{}).value||"ALL";
 function setBatch(b){const all=[...document.querySelectorAll("#lBatch input")];(all.find(i=>i.value===b)||all[0]).checked=true}
@@ -401,7 +402,7 @@ $("logSave").onclick=()=>{
     if(!staff.length)return m.textContent="Select the staff member(s).";
   }
   const clash=db.logs.find(l=>l.id!==editLog&&l.date===rec.date&&(l.periods||[]).some(p=>periods.includes(p))&&l.staff.some(x=>staff.includes(x)));
-  if(clash){const who=clash.staff.filter(x=>staff.includes(x)).map(x=>nm(db.staff,x)).join(", ");return m.textContent=who+" already logged for "+whatT(clash)+" ("+perTxt(clash.periods)+") on this date. Check the periods.";}
+  if(clash){const who=clash.staff.filter(x=>staff.includes(x)).map(x=>nm(db.staff,x)).join(", ");return m.textContent=who+" already logged for "+whatT(clash)+(tType(clash)==="lab"?" - "+batchTxt(clash):"")+" ("+perTxt(clash.periods)+") on this date. Check the periods.";}
   if(editLog){Object.assign(db.logs.find(x=>x.id===editLog),rec)}else db.logs.push({id:uid(),...rec});
   m.textContent="";editLog=null;$("lNote").value="";$("lDesc").value="";setPer([]);save();render();
 };
@@ -421,7 +422,7 @@ function renderLog(){
   const sel=e?e.staff:[...document.querySelectorAll("#lStaff input:checked")].map(i=>i.value);
   $("lStaff").innerHTML=db.staff.length?db.staff.map(s=>`<label><input type="checkbox" value="${s.id}"${sel.includes(s.id)?" checked":""}>${esc(s.name)}</label>`).join(""):`<span class="empty">Add lab staff first.</span>`;
   const rows=[...db.logs].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,30);
-  $("logList").innerHTML=rows.length?`<table><thead><tr><th>Date</th><th>Periods</th><th>Entry</th><th>Lecturer</th><th>Staff</th><th>Hrs</th><th></th></tr></thead><tbody>${rows.map(l=>{const lab=tType(l)==="lab";return `<tr><td>${fmt(l.date)}</td><td>${perTxt(l.periods)}</td><td>${what(l)}</td><td>${lab?esc(nm(db.lect,l.lect)):"-"}</td><td>${l.staff.map(s=>`<span class="tag">${esc(nm(db.staff,s))}</span>`).join("")}</td><td>${lab?l.hrs:"-"}</td><td style="white-space:nowrap"><button class="edit" onclick="editLogFn('${l.id}')">Edit</button><button class="del" onclick="delLog('${l.id}')">Delete</button></td></tr>`}).join("")}</tbody></table>`:`<div class="empty">No entries logged yet.</div>`;
+  $("logList").innerHTML=rows.length?`<table><thead><tr><th>Date</th><th>Periods</th><th>Entry</th><th>Batch</th><th>Lecturer</th><th>Staff</th><th>Hrs</th><th></th></tr></thead><tbody>${rows.map(l=>{const lab=tType(l)==="lab";return `<tr><td>${fmt(l.date)}</td><td>${perTxt(l.periods)}</td><td>${what(l)}</td><td>${batchTxt(l)}</td><td>${lab?esc(nm(db.lect,l.lect)):"-"}</td><td>${l.staff.map(s=>`<span class="tag">${esc(nm(db.staff,s))}</span>`).join("")}</td><td>${lab?l.hrs:"-"}</td><td style="white-space:nowrap"><button class="edit" onclick="editLogFn('${l.id}')">Edit</button><button class="del" onclick="delLog('${l.id}')">Delete</button></td></tr>`}).join("")}</tbody></table>`:`<div class="empty">No entries logged yet.</div>`;
 }
 
 /* report */
@@ -476,7 +477,7 @@ function listView(rows){
   if(!rows.length)return `<div class="empty">No entries for this selection.</div>`;
   const hr=r=>r.reduce((a,l)=>a+(tType(l)==="lab"?(l.hrs||0):0),0);
   const sum=`<h2>Summary by staff</h2><table><thead><tr><th>Staff</th><th>Days</th><th>Lab periods</th><th>Lab hours</th></tr></thead><tbody>${db.staff.map(p=>{const r=rows.filter(l=>l.staff.includes(p.id));return `<tr><td>${esc(p.name)}</td><td>${new Set(r.map(l=>l.date)).size}</td><td>${r.filter(l=>tType(l)==="lab").reduce((a,l)=>a+(l.periods||[]).length,0)}</td><td>${nfmt(hr(r))}</td></tr>`}).join("")}</tbody></table><p class="noprint" style="color:var(--mute);font-size:13px">Choose a lab staff member above to see the bill sheet.</p>`;
-  return sum+`<h2>All entries</h2><table><thead><tr><th>Date</th><th>Periods</th><th>Entry</th><th>Lecturer</th><th>Staff</th><th>Hrs</th></tr></thead><tbody>${rows.map(l=>{const lab=tType(l)==="lab";return `<tr><td>${fmt(l.date)}</td><td>${perTxt(l.periods)}</td><td>${what(l)}</td><td>${lab?esc(nm(db.lect,l.lect)):"-"}</td><td>${l.staff.map(x=>esc(nm(db.staff,x))).join(", ")}</td><td>${lab?l.hrs:"-"}</td></tr>`}).join("")}</tbody></table>`;
+  return sum+`<h2>All entries</h2><table><thead><tr><th>Date</th><th>Periods</th><th>Entry</th><th>Batch</th><th>Lecturer</th><th>Staff</th><th>Hrs</th></tr></thead><tbody>${rows.map(l=>{const lab=tType(l)==="lab";return `<tr><td>${fmt(l.date)}</td><td>${perTxt(l.periods)}</td><td>${what(l)}</td><td>${batchTxt(l)}</td><td>${lab?esc(nm(db.lect,l.lect)):"-"}</td><td>${l.staff.map(x=>esc(nm(db.staff,x))).join(", ")}</td><td>${lab?l.hrs:"-"}</td></tr>`}).join("")}</tbody></table>`;
 }
 function renderReport(){
   if(!$("rMonth").value)$("rMonth").value=today().slice(0,7);
@@ -498,7 +499,7 @@ $("rDesig").onchange=()=>{const s=$("rStaff").value;if(s)setSet("desig-"+s,$("rD
 $("rPrev").onchange=()=>{const s=$("rStaff").value;if(s)setSet("prev-"+s+"-"+$("rMonth").value,$("rPrev").value);renderReport()};
 $("csvBtn").onclick=()=>{
   const q=v=>`"${String(v).replace(/"/g,'""')}"`;
-  const lines=[["Date","Periods","Entry","Lecturer","Staff","Hours","Remarks"].join(",")].concat(reportRows().map(l=>{const lab=tType(l)==="lab";return [fmt(l.date),perTxt(l.periods),whatT(l),lab?nm(db.lect,l.lect):"",l.staff.map(x=>nm(db.staff,x)).join("; "),lab?l.hrs:"",lab?(l.note||""):""].map(q).join(",")}));
+  const lines=[["Date","Periods","Entry","Batch","Lecturer","Staff","Hours","Remarks"].join(",")].concat(reportRows().map(l=>{const lab=tType(l)==="lab";return [fmt(l.date),perTxt(l.periods),whatT(l),batchTxt(l),lab?nm(db.lect,l.lect):"",l.staff.map(x=>nm(db.staff,x)).join("; "),lab?l.hrs:"",lab?(l.note||""):""].map(q).join(",")}));
   dl("lab-duty-"+($("rMonth").value||"all")+".csv","text/csv","\ufeff"+lines.join("\n"));
 };
 
