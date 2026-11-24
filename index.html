@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Department of Civil Engineering</title>
+<title>Department of Civil Engineering, Lab Duty Register</title>
 <style>
 :root{--bg:#f3f5f2;--card:#fff;--ink:#1d2a26;--mute:#66736e;--line:#d6ddd8;--accent:#1f6f5c;--accent-ink:#fff;--warn:#b3402a;--soft:#e4efe9}
 @media (prefers-color-scheme:dark){:root{--bg:#141b18;--card:#1c2622;--ink:#e6eee9;--mute:#98a8a1;--line:#2d3b35;--accent:#58b99f;--accent-ink:#0f1a16;--warn:#ef8a74;--soft:#233a31}}
@@ -65,8 +65,8 @@ button.link:hover{text-decoration:underline}
 </head>
 <body>
 <header>
-  <h1>Department of Civil Engineering</h1>
-  <p>Lab Duty Log</p>
+  <h1>Department of Civil Engineering </h1>
+  <p>Lab Duty Register</p>
   <p id="syncStat" style="margin-top:4px"></p>
 </header>
 <nav id="nav">
@@ -291,10 +291,11 @@ function fillSync(){["Owner","Repo","Path","Branch","Token"].forEach(k=>$("g"+k)
 function b64u(s){return btoa(unescape(encodeURIComponent(s)))}
 function importSetup(){
   const h=location.hash;
+  if(h==="#admin"){cfg.hideSync=false;try{localStorage.setItem(CFG_KEY,JSON.stringify(cfg))}catch(e){}history.replaceState(null,"",location.pathname+location.search);return}
   if(!h.startsWith("#setup="))return;
   try{
     const o=JSON.parse(decodeURIComponent(escape(atob(h.slice(7)))));
-    cfg={owner:o.o||"",repo:o.r||"",path:o.p||"data.json",branch:o.b||"",token:o.t||""};
+    cfg={owner:o.o||"",repo:o.r||"",path:o.p||"data.json",branch:o.b||"",token:o.t||"",hideSync:true};
     localStorage.setItem(CFG_KEY,JSON.stringify(cfg));
   }catch(e){}
   history.replaceState(null,"",location.pathname+location.search);
@@ -302,6 +303,7 @@ function importSetup(){
 function startSync(){
   importSetup();
   fillSync();
+  if(cfg.hideSync)document.querySelectorAll('#nav button[data-t="sync"],#nav button[data-t="data"]').forEach(b=>b.style.display="none");
   $("gLink").onclick=()=>{
     const m=$("linkMsg"),out=$("gLinkOut");
     if(!connected()){m.textContent="Connect to GitHub first, then create the link.";return}
