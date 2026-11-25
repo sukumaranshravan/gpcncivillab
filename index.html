@@ -436,8 +436,10 @@ function reportRows(){
 function sheet(rows,s,mo){
   if(!rows.length)return `<div class="empty">No entries for this staff member in this month.</div>`;
   const lab=rows.filter(l=>tType(l)==="lab");
+  const sem0=getSet("sem");
+  const colRows=(sem0&&mo&&mo>=sem0)?db.logs.filter(l=>l.staff.includes(s)&&tType(l)==="lab"&&l.date.slice(0,7)<=mo&&l.date>=sem0+"-01").sort((a,b)=>a.date.localeCompare(b.date)):lab;
   const groups=[];
-  lab.forEach(l=>{let g=groups.find(x=>x.lab===l.lab);if(!g){g={lab:l.lab,cols:[]};groups.push(g)}const b=l.batch||"ALL";if(!g.cols.some(c=>c.b===b))g.cols.push({k:l.lab+"|"+b,b})});
+  colRows.forEach(l=>{let g=groups.find(x=>x.lab===l.lab);if(!g){g={lab:l.lab,cols:[]};groups.push(g)}const b=l.batch||"ALL";if(!g.cols.some(c=>c.b===b))g.cols.push({k:l.lab+"|"+b,b})});
   groups.forEach(g=>g.cols.sort((a,b)=>a.b.localeCompare(b.b)));
   if(!groups.length)groups.push({lab:null,cols:[{k:"",b:""}]});
   const flat=groups.flatMap(g=>g.cols),n=flat.length;
