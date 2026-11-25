@@ -51,6 +51,8 @@ button.link:hover{text-decoration:underline}
 .tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .tag{display:inline-block;background:var(--soft);border-radius:4px;padding:1px 7px;margin:1px 2px 1px 0;font-size:13px}
 .tot{font-weight:600}
+.pay{display:flex;align-items:flex-end;gap:4px;font-size:11px;white-space:nowrap}
+.pay .dot{display:block;border-bottom:1px dotted #000;height:13px;min-width:30px}
 .hide{display:none!important}
 .paper{background:#fff;color:#000;padding:14px;min-width:820px}
 .bh{text-align:center;font-weight:700;font-size:16px;margin-bottom:6px}
@@ -476,7 +478,8 @@ ${foot("Maximum Teaching Hours",maxOf)}
 </tbody></table>
 <table class="bill" style="margin-top:-1px"><tr><td colspan="2" class="c lbl" style="height:34px">For HoD</td><td></td></tr>
 <tr><td class="c lbl" style="width:36%">No. of days worked:</td><td class="c lbl" style="width:12%">${dates.length}</td><td class="cert">${cert}</td></tr>
-<tr><td colspan="2" class="sig">Signature of Employee:</td><td class="sig">Signature of HoD with name and designation:</td></tr></table>
+<tr><td colspan="2" class="sig">Signature of Employee:</td><td class="sig">Signature of HoD with name and designation:</td></tr>
+<tr><td colspan="3" style="height:40px;vertical-align:bottom"><div class="pay"><span>Passed for payment Rs:</span><i class="dot" style="flex:2"></i><span>( Rupees</span><i class="dot" style="flex:5"></i><span>) at the rate of Rs:</span><i class="dot" style="flex:2"></i><span>as daily wage</span></div></td></tr></table>
 </div>`;
 }
 function listView(rows){
