@@ -62,7 +62,7 @@ button.link:hover{text-decoration:underline}
 .bill th{font-size:11px;text-align:center;font-weight:700}
 .bill td{height:24px}.bill td.c{text-align:center}.bill .nw{white-space:nowrap}
 .bill .lbl{font-weight:700;font-size:11px}.bill .cert{font-size:10px;line-height:1.35}.bill .sig{height:56px;vertical-align:top;font-size:11px}
-@media print{@page{size:A4 landscape;margin:8mm}header,nav,.noprint,button{display:none!important}body{background:#fff;color:#000}main{padding:0;max-width:none}.card{border:0;padding:0;margin:0}section{display:none}section.on{display:block}.paper{padding:0;min-width:0}.bill tr{page-break-inside:avoid}}
+@media print{@page{size:A4 landscape;margin:0}header,nav,.noprint,button{display:none!important}body{background:#fff;color:#000}main{padding:0;max-width:none}.card{border:0;padding:0;margin:0}section{display:none}section.on{display:block}.paper{padding:9mm;min-width:0}.bill tr{page-break-inside:avoid}}
 </style>
 </head>
 <body>
@@ -112,7 +112,7 @@ button.link:hover{text-decoration:underline}
 </section>
 
 <section id="report">
-  <div class="card">
+  <div class="card noprint">
     <h2>Bill report</h2>
     <div class="row noprint">
       <div><label for="rMonth">Month</label><input type="month" id="rMonth"></div>
