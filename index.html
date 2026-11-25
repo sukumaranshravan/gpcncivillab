@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dept of Civil Engineering, Lab Duty Register</title>
+<title>Lab Duty Register</title>
 <style>
 :root{--bg:#f3f5f2;--card:#fff;--ink:#1d2a26;--mute:#66736e;--line:#d6ddd8;--accent:#1f6f5c;--accent-ink:#fff;--warn:#b3402a;--soft:#e4efe9}
 @media (prefers-color-scheme:dark){:root{--bg:#141b18;--card:#1c2622;--ink:#e6eee9;--mute:#98a8a1;--line:#2d3b35;--accent:#58b99f;--accent-ink:#0f1a16;--warn:#ef8a74;--soft:#233a31}}
@@ -65,8 +65,8 @@ button.link:hover{text-decoration:underline}
 </head>
 <body>
 <header>
-  <h1>Department of Civil Engineering</h1>
-  <p>Lab Duty Register</p>
+  <h1>Lab Duty Register</h1>
+  <p>Record who worked which lab, with which lecturer, then pull a clean list for your bill.</p>
   <p id="syncStat" style="margin-top:4px"></p>
 </header>
 <nav id="nav">
@@ -118,8 +118,8 @@ button.link:hover{text-decoration:underline}
       <div><label for="rCollege">College name</label><input id="rCollege"></div>
       <div><label for="rDept">Department</label><input id="rDept"></div>
       <div><label for="rDesig">Designation (selected staff)</label><input id="rDesig"></div>
-      <div><label for="rPrev">Hours done in previous months</label><input id="rPrev" type="number" min="0" step="0.5"></div>
-      <div><label for="rMax">Maximum teaching hours</label><input id="rMax" type="number" min="0" step="0.5"></div>
+      <div><label for="rSem">Semester start month</label><input id="rSem" type="month"></div>
+      <div><label for="rMax">Default max hours (if a lab has none)</label><input id="rMax" type="number" min="0" step="0.5"></div>
     </div>
     <div class="tools noprint"><button class="btn" onclick="window.print()">Print / save as PDF</button><button class="btn ghost" id="csvBtn">Download CSV</button></div>
   </div>
@@ -133,6 +133,7 @@ button.link:hover{text-decoration:underline}
       <div><label for="bName">Lab / subject name</label><input id="bName" placeholder="e.g. Physics Lab I"></div>
       <div><label for="bLect">Usual lecturer</label><select id="bLect"></select></div>
       <div><label for="bCode">Class (as shown in the bill)</label><input id="bCode" placeholder="e.g. S3CE"></div>
+      <div><label for="bMax">Max teaching hours (optional)</label><input id="bMax" type="number" min="0" step="0.5" placeholder="e.g. 36"></div>
     </div>
     <div class="tools"><button class="btn" id="labSave">Save lab</button><button class="btn ghost" id="labCancel" style="display:none">Cancel</button></div>
   </div>
@@ -357,12 +358,12 @@ function remove(kind,id){
 /* labs */
 $("labSave").onclick=()=>{
   const name=$("bName").value.trim();if(!name)return;
-  const rec={name,lect:$("bLect").value,code:$("bCode").value.trim()};
+  const rec={name,lect:$("bLect").value,code:$("bCode").value.trim(),max:$("bMax").value};
   if(editLab){Object.assign(db.labs.find(x=>x.id===editLab),rec)}else db.labs.push({id:uid(),...rec});
-  editLab=null;$("bName").value="";$("bCode").value="";save();render();
+  editLab=null;$("bName").value="";$("bCode").value="";$("bMax").value="";save();render();
 };
-$("labCancel").onclick=()=>{editLab=null;$("bName").value="";$("bCode").value="";render()};
-function editLabFn(id){const l=db.labs.find(x=>x.id===id);editLab=id;render();$("bName").value=l.name;$("bCode").value=l.code||"";$("bLect").value=l.lect||"";window.scrollTo(0,0)}
+$("labCancel").onclick=()=>{editLab=null;$("bName").value="";$("bCode").value="";$("bMax").value="";render()};
+function editLabFn(id){const l=db.labs.find(x=>x.id===id);editLab=id;render();$("bName").value=l.name;$("bCode").value=l.code||"";$("bMax").value=l.max||"";$("bLect").value=l.lect||"";window.scrollTo(0,0)}
 
 /* log */
 const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -450,11 +451,12 @@ function sheet(rows,s,mo){
     const rem=[...day.filter(l=>tType(l)==="remark").map(l=>l.desc||""),...day.filter(l=>tType(l)==="lab"&&l.note).map(l=>l.note)].map(esc).join("; ");
     return `<tr><td class="c">${i+1}</td><td class="c nw">${dshort(d)}</td>${cells}<td>${works.map(l=>esc(l.desc||"")).join("<br>")}</td><td class="c">${works.map(l=>per(l.periods||[])).join("<br>")}</td><td>${rem}</td></tr>`;
   }).join("");
-  const cur=lab.reduce((a,l)=>a+(l.hrs||0),0);
-  const prev=parseFloat(getSet("prev-"+s+"-"+mo))||0;
-  const mx=getSet("max");
+  const mx=getSet("max"),sem=getSet("sem"),start=mo?mo+"-01":"";
+  const curOf=g=>lab.filter(l=>l.lab===g.lab).reduce((a,l)=>a+(l.hrs||0),0);
+  const prevOf=g=>mo?db.logs.filter(l=>l.staff.includes(s)&&tType(l)==="lab"&&l.lab===g.lab&&l.date<start&&(!sem||l.date>=sem+"-01")).reduce((a,l)=>a+(l.hrs||0),0):0;
+  const maxOf=g=>{const v=L(g).max;return (v!==undefined&&v!=="")?nfmt(v):(mx===""?"":nfmt(mx))};
   const month=mo?MONTHS[+mo.slice(5)-1]+" "+mo.slice(0,4):"All months";
-  const foot=(t,v)=>`<tr><td colspan="2" class="lbl">${t}</td><td colspan="${n}" class="c">${v}</td><td colspan="3"></td></tr>`;
+  const foot=(t,fn)=>`<tr><td colspan="2" class="lbl">${t}</td>${groups.map(g=>`<td colspan="${g.cols.length}" class="c">${g.lab===null?"":fn(g)}</td>`).join("")}<td colspan="3"></td></tr>`;
   const cert="As per circular L1/23290/2017/DTE dt 22/06/2017 certified that the above guest faculty has engaged classroom works as well as other academic works on the days mentioned above, verified as per class log and subject logs. Also certified that particulars furnished by the faculty are correct and hence claim is justified.";
   return `<div class="paper">
 <div class="bh">${esc(getSet("college")||"COLLEGE NAME")}</div>
@@ -465,10 +467,10 @@ function sheet(rows,s,mo){
 <tr><th></th>${flat.map(c=>`<th>${esc(c.b)}</th>`).join("")}</tr>
 <tr><th>DATE</th>${flat.map(()=>`<th>PERIODS</th>`).join("")}</tr>
 </thead><tbody>${body}
-${foot("Completed teaching hours in the previous month/s",nfmt(prev))}
-${foot("Completed teaching hours in current month",nfmt(cur))}
-${foot("Cumulative Hours",nfmt(prev+cur))}
-${foot("Maximum Teaching Hours",mx===""?"":nfmt(mx))}
+${foot("Completed teaching hours in the previous month/s",g=>nfmt(prevOf(g)))}
+${foot("Completed teaching hours in current month",g=>nfmt(curOf(g)))}
+${foot("Cumulative Hours",g=>nfmt(prevOf(g)+curOf(g)))}
+${foot("Maximum Teaching Hours",maxOf)}
 </tbody></table>
 <table class="bill" style="margin-top:-1px"><tr><td colspan="2" class="c lbl" style="height:34px">For HoD</td><td></td></tr>
 <tr><td class="c lbl" style="width:36%">No. of days worked:</td><td class="c lbl" style="width:12%">${dates.length}</td><td class="cert">${cert}</td></tr>
@@ -489,8 +491,8 @@ function renderReport(){
   const s=$("rStaff").value,mo=$("rMonth").value,one=s&&s!=="__all";
   const fill=(id,v)=>{if(document.activeElement!==$(id))$(id).value=v};
   fill("rCollege",getSet("college"));fill("rDept",getSet("dept","Civil Engineering"));fill("rMax",getSet("max"));
-  fill("rDesig",one?getSet("desig-"+s):"");fill("rPrev",one?getSet("prev-"+s+"-"+mo):"");
-  $("rDesig").disabled=$("rPrev").disabled=!one;
+  fill("rDesig",one?getSet("desig-"+s):"");fill("rSem",getSet("sem"));
+  $("rDesig").disabled=!one;
   const rows=reportRows();
   $("repOut").innerHTML=one?sheet(rows,s,mo):s==="__all"?listView(rows):`<div class="empty">Choose your name above to generate your bill for the selected month.</div>`;
 }
@@ -499,7 +501,7 @@ $("rCollege").onchange=()=>{setSet("college",$("rCollege").value.trim());renderR
 $("rDept").onchange=()=>{setSet("dept",$("rDept").value.trim());renderReport()};
 $("rMax").onchange=()=>{setSet("max",$("rMax").value);renderReport()};
 $("rDesig").onchange=()=>{const s=$("rStaff").value;if(s&&s!=="__all")setSet("desig-"+s,$("rDesig").value.trim());renderReport()};
-$("rPrev").onchange=()=>{const s=$("rStaff").value;if(s&&s!=="__all")setSet("prev-"+s+"-"+$("rMonth").value,$("rPrev").value);renderReport()};
+$("rSem").onchange=()=>{setSet("sem",$("rSem").value);renderReport()};
 $("csvBtn").onclick=()=>{
   const q=v=>`"${String(v).replace(/"/g,'""')}"`;
   const lines=[["Date","Periods","Entry","Batch","Lecturer","Staff","Hours","Remarks"].join(",")].concat(reportRows().map(l=>{const lab=tType(l)==="lab";return [fmt(l.date),perTxt(l.periods),whatT(l),batchTxt(l),lab?nm(db.lect,l.lect):"",l.staff.map(x=>nm(db.staff,x)).join("; "),lab?l.hrs:"",lab?(l.note||""):""].map(q).join(",")}));
@@ -524,7 +526,7 @@ function render(){
   $("bLect").innerHTML=opts(db.lect,$("bLect").value,"None");
   $("labTitle").textContent=editLab?"Edit lab":"Add a lab";
   $("labCancel").style.display=editLab?"":"none";
-  $("labList").innerHTML=db.labs.length?`<table><thead><tr><th>Lab / subject</th><th>Class</th><th>Usual lecturer</th><th></th></tr></thead><tbody>${db.labs.map(l=>`<tr><td>${esc(l.name)}</td><td>${esc(l.code||"")}</td><td>${esc(l.lect?nm(db.lect,l.lect):"")}</td><td style="text-align:right;white-space:nowrap"><button class="edit" onclick="editLabFn('${l.id}')">Edit</button><button class="del" onclick="remove('labs','${l.id}')">Delete</button></td></tr>`).join("")}</tbody></table>`:`<div class="empty">No labs yet. Add your subjects above.</div>`;
+  $("labList").innerHTML=db.labs.length?`<table><thead><tr><th>Lab / subject</th><th>Class</th><th>Usual lecturer</th><th>Max hrs</th><th></th></tr></thead><tbody>${db.labs.map(l=>`<tr><td>${esc(l.name)}</td><td>${esc(l.code||"")}</td><td>${esc(l.lect?nm(db.lect,l.lect):"")}</td><td>${esc(l.max||"")}</td><td style="text-align:right;white-space:nowrap"><button class="edit" onclick="editLabFn('${l.id}')">Edit</button><button class="del" onclick="remove('labs','${l.id}')">Delete</button></td></tr>`).join("")}</tbody></table>`:`<div class="empty">No labs yet. Add your subjects above.</div>`;
   renderLog();renderReport();
 }
 document.querySelectorAll("[data-per]").forEach(b=>b.onclick=()=>setPer(b.dataset.per?b.dataset.per.split(",").map(Number):[]));
